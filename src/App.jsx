@@ -19,9 +19,9 @@ function App() {
 
           <NavLink
             to="/login"
-            className="group rounded-2xl border border-slate-800 bg-slate-900 p-8 transition hover:-translate-y-1 hover:border-blue-500"
+            className="group rounded-2xl border border-slate-800 bg-slate-900 p-8 transition hover:-translate-y-1 hover:border-emerald-500"
           >
-            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
+            <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
               <span className="text-xl">→</span>
             </div>
 
@@ -33,7 +33,7 @@ function App() {
               Already have an account? Login here.
             </p>
 
-            <div className="mt-6 text-blue-400 font-medium">
+            <div className="mt-6 text-emerald-400 font-medium">
               Continue →
             </div>
           </NavLink>

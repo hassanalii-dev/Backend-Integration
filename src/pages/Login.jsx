@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import axios from "axios";
 import { Link, useNavigate } from "react-router";
 
 const Login = () => {
@@ -10,31 +9,73 @@ const Login = () => {
 
   const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
+  const handleLogin = (e) => {
     e.preventDefault();
+
+    if (!username.trim() || !password.trim()) {
+      alert("Please enter username/email and password.");
+      return;
+    }
+
     setLoading(true);
 
-    try {
-      const response = await axios.post(
-        "http://localhost:5050/user/login",
-        {
-          username,
-          password,
-        }
-      );
+    const users = JSON.parse(
+      localStorage.getItem("users") || "[]"
+    );
 
-      localStorage.setItem("loginToken", response.data.token);
+    const enteredUsernameOrEmail = username.trim().toLowerCase();
+
+    const foundUser = users.find((user) => {
+      const savedUsername = user.username
+        .trim()
+        .toLowerCase();
+
+      const savedEmail = user.email
+        .trim()
+        .toLowerCase();
+
+      return (
+        (enteredUsernameOrEmail === savedUsername ||
+          enteredUsernameOrEmail === savedEmail) &&
+        password === user.password
+      );
+    });
+
+    setTimeout(() => {
+      if (!foundUser) {
+        const userExists = users.some((user) => {
+          const savedUsername = user.username
+            .trim()
+            .toLowerCase();
+
+          const savedEmail = user.email
+            .trim()
+            .toLowerCase();
+
+          return (
+            enteredUsernameOrEmail === savedUsername ||
+            enteredUsernameOrEmail === savedEmail
+          );
+        });
+
+        if (!userExists) {
+          alert("Incorrect username or email.");
+        } else {
+          alert("Incorrect password.");
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      localStorage.setItem("isLoggedIn", "true");
 
       alert("Login successful!");
+
       navigate("/products");
-    } catch (error) {
-      console.error("Login error:", error);
-      alert(
-        "Failed to login. Please check your credentials and try again."
-      );
-    } finally {
+
       setLoading(false);
-    }
+    }, 500);
   };
 
   return (
@@ -42,8 +83,11 @@ const Login = () => {
       <div className="w-full max-w-md">
 
         <div className="mb-8 text-center">
+
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10">
-            <span className="text-2xl text-emerald-400">→</span>
+            <span className="text-2xl text-emerald-400">
+              →
+            </span>
           </div>
 
           <h1 className="text-3xl font-bold text-white">
@@ -53,18 +97,22 @@ const Login = () => {
           <p className="mt-2 text-slate-400">
             Login to access your account
           </p>
+
         </div>
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-7 shadow-xl">
 
           <form onSubmit={handleLogin}>
 
+            {/* Username / Email */}
+
             <div className="mb-5">
+
               <label
                 htmlFor="username"
                 className="mb-2 block text-sm font-medium text-slate-300"
               >
-                Username
+                Username or Email
               </label>
 
               <input
@@ -72,13 +120,17 @@ const Login = () => {
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                placeholder="Enter username or email"
                 required
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               />
+
             </div>
 
+            {/* Password */}
+
             <div className="mb-6">
+
               <label
                 htmlFor="password"
                 className="mb-2 block text-sm font-medium text-slate-300"
@@ -87,6 +139,7 @@ const Login = () => {
               </label>
 
               <div className="relative">
+
                 <input
                   type={showPassword ? "text" : "password"}
                   id="password"
@@ -99,11 +152,19 @@ const Login = () => {
 
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
+                  onClick={() =>
+                    setShowPassword(!showPassword)
+                  }
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-emerald-400"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={
+                    showPassword
+                      ? "Hide password"
+                      : "Show password"
+                  }
                 >
+
                   {showPassword ? (
+
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
@@ -118,7 +179,9 @@ const Login = () => {
                         d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c1.885 0 3.655-.505 5.177-1.386M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.774 3.162 10.066 7.5a10.523 10.523 0 01-4.132 5.411M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.243 4.243L9.879 9.879"
                       />
                     </svg>
+
                   ) : (
+
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
@@ -132,16 +195,24 @@ const Login = () => {
                         strokeLinejoin="round"
                         d="M2.036 12.322a1.012 1.012 0 010-.644C3.423 7.51 7.36 4.5 12 4.5c4.64 0 8.577 3.01 9.964 7.178.07.21.07.434 0 .644C20.577 16.49 16.64 19.5 12 19.5c-4.64 0-8.577-3.01-9.964-7.178z"
                       />
+
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                       />
+
                     </svg>
+
                   )}
+
                 </button>
+
               </div>
+
             </div>
+
+            {/* Login Button */}
 
             <button
               type="submit"
@@ -153,19 +224,26 @@ const Login = () => {
 
           </form>
 
+          {/* Signup Link */}
+
           <div className="mt-6 border-t border-slate-800 pt-5 text-center">
+
             <p className="text-sm text-slate-400">
               Don't have an account?{" "}
+
               <Link
                 to="/signup"
                 className="font-medium text-emerald-400 transition hover:text-emerald-300"
               >
                 Create Account
               </Link>
+
             </p>
+
           </div>
 
         </div>
+
       </div>
     </div>
   );
