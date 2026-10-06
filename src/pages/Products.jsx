@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router";
 
+const API_URL = "http://localhost:5050/products";
+
 export default function App() {
   const [products, setProducts] = useState([]);
 
@@ -17,17 +19,38 @@ export default function App() {
 
   const navigate = useNavigate();
 
+  const getToken = () => {
+    return localStorage.getItem("token");
+  };
+
+  // GET PRODUCTS
   async function fetchProducts() {
+    const token = getToken();
+
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
     try {
-      const response = await axios.get(
-        "https://scarlet-ridge-1070.de.deplexo.com/products"
-      );
+      const response = await axios.get(API_URL, {
+        params: {
+          token: token,
+        },
+      });
 
       console.log("All API Products:", response.data);
 
-      setProducts([]);
+      setProducts(response.data);
     } catch (err) {
       console.log("GET Error:", err);
+      console.log("Server Error:", err.response?.data);
+
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("isLoggedIn");
+        navigate("/login");
+      }
     }
   }
 
@@ -35,6 +58,7 @@ export default function App() {
     fetchProducts();
   }, []);
 
+  // INPUT CHANGE
   const handleProductInfoChange = (e) => {
     setNewProductInfo((prev) => ({
       ...prev,
@@ -42,24 +66,49 @@ export default function App() {
     }));
   };
 
+  // ADD PRODUCT
   async function addProduct(e) {
     e.preventDefault();
 
+    const token = getToken();
+
+    if (!token) {
+      alert("Please login first.");
+      navigate("/login");
+      return;
+    }
+
+    if (
+      !newProductInfo.id.trim() ||
+      !newProductInfo.name.trim() ||
+      !newProductInfo.desc.trim() ||
+      !newProductInfo.imageurl.trim()
+    ) {
+      alert("Please fill all product fields.");
+      return;
+    }
+
     try {
-      const response = await axios.post(
-        "https://scarlet-ridge-1070.de.deplexo.com/products",
-        {
-          ...newProductInfo,
-          id: Number(newProductInfo.id),
-          price: Number(newProductInfo.price),
-        }
-      );
+      const response = await axios.post(API_URL, {
+        id: String(newProductInfo.id),
+        name: newProductInfo.name.trim(),
+        price: Number(newProductInfo.price) || 0,
+        imageurl: newProductInfo.imageurl.trim(),
+        desc: newProductInfo.desc.trim(),
+        token: token,
+      });
 
-      const addedProduct = response.data.product || response.data;
+      console.log("New Product Added:", response.data);
 
-      console.log("New Product Added:", addedProduct);
-
-      setProducts((prev) => [...prev, addedProduct]);
+      // Product ko screen par foran show karo
+      if (response.data.product) {
+        setProducts((prev) => [
+          ...prev,
+          response.data.product,
+        ]);
+      } else {
+        await fetchProducts();
+      }
 
       setNewProductInfo({
         id: "",
@@ -72,59 +121,82 @@ export default function App() {
       alert("Product Added Successfully");
     } catch (err) {
       console.log("POST Error:", err);
+      console.log("Server Error:", err.response?.data);
+
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("isLoggedIn");
+        navigate("/login");
+        return;
+      }
+
+      alert(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Product could not be added."
+      );
     }
   }
 
+  // EDIT PRODUCT
   function editProduct(product) {
     setEditingProduct(product.id);
 
     setNewProductInfo({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      desc: product.desc,
-      imageurl: product.imageurl,
+      id: product.id || "",
+      name: product.name || "",
+      price: product.price ?? "",
+      desc: product.desc || "",
+      imageurl: product.imageurl || "",
     });
   }
 
+  // UPDATE PRODUCT
   async function updateProduct() {
     if (editingProduct === null) {
       return;
     }
 
+    const token = getToken();
+
+    if (!token) {
+      alert("Please login first.");
+      navigate("/login");
+      return;
+    }
+
+    if (
+      !newProductInfo.name.trim() ||
+      !newProductInfo.desc.trim() ||
+      !newProductInfo.imageurl.trim()
+    ) {
+      alert("Please fill all product fields.");
+      return;
+    }
+
     try {
       const updatedData = {
-        id: Number(editingProduct),
-        name: newProductInfo.name,
-        price: Number(newProductInfo.price),
-        desc: newProductInfo.desc,
-        imageurl: newProductInfo.imageurl,
+        name: newProductInfo.name.trim(),
+        price: Number(newProductInfo.price) || 0,
+        imageurl: newProductInfo.imageurl.trim(),
+        desc: newProductInfo.desc.trim(),
+        token: token,
       };
 
       const response = await axios.put(
-        `https://scarlet-ridge-1070.de.deplexo.com/products/${editingProduct}`,
+        `${API_URL}/${editingProduct}`,
         updatedData
       );
 
       console.log("PUT Response:", response.data);
 
       const updatedProduct =
-        response.data.product ||
-        response.data.updatedProduct ||
-        response.data;
+        response.data.product || response.data;
 
       setProducts((prev) =>
         prev.map((product) =>
-          Number(product.id) === Number(editingProduct)
-            ? {
-                ...product,
-                ...updatedProduct,
-                id: Number(editingProduct),
-                name: newProductInfo.name,
-                price: Number(newProductInfo.price),
-                desc: newProductInfo.desc,
-                imageurl: newProductInfo.imageurl,
-              }
+          String(product.id) === String(editingProduct)
+            ? updatedProduct
             : product
         )
       );
@@ -143,32 +215,76 @@ export default function App() {
     } catch (err) {
       console.log("PUT Error:", err);
       console.log("Server Error:", err.response?.data);
+
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("isLoggedIn");
+        navigate("/login");
+        return;
+      }
+
+      alert(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Product could not be updated."
+      );
     }
   }
 
+  // DELETE PRODUCT
   async function deleteProduct(id) {
+    const token = getToken();
+
+    if (!token) {
+      alert("Please login first.");
+      navigate("/login");
+      return;
+    }
+
     try {
       const response = await axios.delete(
-        `https://scarlet-ridge-1070.de.deplexo.com/products/${id}`
+        `${API_URL}/${id}`,
+        {
+          params: {
+            token: token,
+          },
+        }
       );
 
-      console.log("Deleted Product:", response.data.product);
+      console.log("Deleted Product:", response.data);
 
       setProducts((prev) =>
         prev.filter(
-          (product) => Number(product.id) !== Number(id)
+          (product) =>
+            String(product.id) !== String(id)
         )
       );
 
       alert("Product Deleted Successfully");
     } catch (err) {
       console.log("DELETE Error:", err);
+      console.log("Server Error:", err.response?.data);
+
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("isLoggedIn");
+        navigate("/login");
+        return;
+      }
+
+      alert(
+        err.response?.data?.error ||
+          err.response?.data?.message ||
+          "Product could not be deleted."
+      );
     }
   }
 
-  // Logout
+  // LOGOUT
   function handleLogout() {
+    localStorage.removeItem("token");
     localStorage.removeItem("isLoggedIn");
+
     navigate("/login");
   }
 
@@ -182,6 +298,7 @@ export default function App() {
         <div className="mb-10 flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 shadow-lg sm:px-6">
 
           <div>
+
             <h1 className="text-lg font-bold text-white sm:text-xl">
               Product Manager
             </h1>
@@ -189,6 +306,7 @@ export default function App() {
             <p className="text-xs text-slate-500 sm:text-sm">
               Manage your products
             </p>
+
           </div>
 
           <button
@@ -196,6 +314,7 @@ export default function App() {
             onClick={handleLogout}
             className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-400 transition duration-200 hover:border-red-500/50 hover:bg-red-500 hover:text-white"
           >
+
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
@@ -204,6 +323,7 @@ export default function App() {
               stroke="currentColor"
               className="h-5 w-5"
             >
+
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -215,9 +335,11 @@ export default function App() {
                 strokeLinejoin="round"
                 d="M18 15l3-3m0 0l-3-3m3 3H9"
               />
+
             </svg>
 
             <span>Logout</span>
+
           </button>
 
         </div>
@@ -244,6 +366,8 @@ export default function App() {
 
           <div className="flex w-full flex-col gap-3">
 
+            {/* ID */}
+
             <input
               type="number"
               name="id"
@@ -255,6 +379,8 @@ export default function App() {
               className="rounded-md border border-slate-800 bg-slate-950 p-2 text-white outline-none placeholder:text-slate-500 focus:border-blue-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
             />
 
+            {/* NAME */}
+
             <input
               type="text"
               name="name"
@@ -264,6 +390,8 @@ export default function App() {
               required
               className="rounded-md border border-slate-800 bg-slate-950 p-2 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
             />
+
+            {/* PRICE */}
 
             <input
               type="number"
@@ -275,6 +403,8 @@ export default function App() {
               className="rounded-md border border-slate-800 bg-slate-950 p-2 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
             />
 
+            {/* DESCRIPTION */}
+
             <input
               type="text"
               name="desc"
@@ -285,6 +415,8 @@ export default function App() {
               className="rounded-md border border-slate-800 bg-slate-950 p-2 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
             />
 
+            {/* IMAGE URL */}
+
             <input
               type="url"
               name="imageurl"
@@ -294,6 +426,8 @@ export default function App() {
               required
               className="rounded-md border border-slate-800 bg-slate-950 p-2 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
             />
+
+            {/* ADD BUTTON */}
 
             <button
               type="button"
@@ -310,6 +444,8 @@ export default function App() {
 
           </div>
 
+          {/* UPDATE BUTTON */}
+
           <button
             type="button"
             onClick={updateProduct}
@@ -318,6 +454,8 @@ export default function App() {
           >
             Update Product
           </button>
+
+          {/* CANCEL EDIT */}
 
           {editingProduct !== null && (
             <button
@@ -350,15 +488,19 @@ export default function App() {
           </h2>
 
           {products.length === 0 ? (
+
             <p className="text-center text-slate-400">
               No products added yet.
             </p>
+
           ) : (
+
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 
               {products.map((product, index) => (
+
                 <div
-                  key={`${product.id}-${product.name}-${index}`}
+                  key={`${product.id || product._id}-${index}`}
                   className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-lg transition duration-300 hover:-translate-y-1 hover:shadow-xl"
                 >
 
@@ -383,18 +525,22 @@ export default function App() {
                     </p>
 
                     <p className="text-lg font-bold text-blue-500">
-                      Rs. {product.price}
+                      Rs. {product.price || 0}
                     </p>
 
                     <button
-                      onClick={() => editProduct(product)}
+                      onClick={() =>
+                        editProduct(product)
+                      }
                       className="mt-3 w-full rounded-md bg-yellow-500 p-2 font-semibold text-white transition hover:bg-yellow-600"
                     >
                       Edit
                     </button>
 
                     <button
-                      onClick={() => deleteProduct(product.id)}
+                      onClick={() =>
+                        deleteProduct(product.id)
+                      }
                       className="mt-3 w-full rounded-md bg-red-500 p-2 font-semibold text-white transition hover:bg-red-600"
                     >
                       Delete
@@ -403,9 +549,11 @@ export default function App() {
                   </div>
 
                 </div>
+
               ))}
 
             </div>
+
           )}
 
         </div>

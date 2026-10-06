@@ -3,82 +3,67 @@ import { Link, useNavigate } from "react-router";
 
 const Signup = () => {
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
 
-    if (
-      !username.trim() ||
-      !email.trim() ||
-      !password.trim()
-    ) {
+    if (!username.trim() || !password.trim()) {
       alert("Please fill all fields.");
       return;
     }
 
     setLoading(true);
 
-    const users = JSON.parse(
-      localStorage.getItem("users") || "[]"
-    );
+    try {
+      const response = await fetch(
+        "http://localhost:5050/user/createUser",
+        {
+          method: "POST",
 
-    const usernameExists = users.some(
-      (user) =>
-        user.username.toLowerCase() ===
-        username.trim().toLowerCase()
-    );
+          headers: {
+            "Content-Type": "application/json",
+          },
 
-    const emailExists = users.some(
-      (user) =>
-        user.email.toLowerCase() ===
-        email.trim().toLowerCase()
-    );
+          body: JSON.stringify({
+            username: username.trim(),
+            password,
+          }),
+        }
+      );
 
-    if (usernameExists) {
-      alert("Username already exists. Please use another username.");
-      setLoading(false);
-      return;
-    }
+      const data = await response.json();
 
-    if (emailExists) {
-      alert("Email already exists. Please use another email.");
-      setLoading(false);
-      return;
-    }
+      if (!response.ok) {
+        alert(
+          data.error ||
+            "Account creation failed."
+        );
+        return;
+      }
 
-    const newUser = {
-      username: username.trim(),
-      email: email.trim(),
-      password: password,
-    };
-
-    users.push(newUser);
-
-    localStorage.setItem(
-      "users",
-      JSON.stringify(users)
-    );
-
-    setTimeout(() => {
       alert("Account created successfully!");
 
       navigate("/login");
+    } catch (error) {
+      console.error("Signup Error:", error);
 
+      alert(
+        "Unable to connect to server. Make sure backend is running."
+      );
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-5 py-10">
-      <div className="w-full max-w-md">
 
-        {/* Header */}
+      <div className="w-full max-w-md">
 
         <div className="mb-8 text-center">
 
@@ -100,13 +85,9 @@ const Signup = () => {
 
         </div>
 
-        {/* Signup Card */}
-
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-7 shadow-xl">
 
           <form onSubmit={handleSignup}>
-
-            {/* Username */}
 
             <div className="mb-5">
 
@@ -130,33 +111,6 @@ const Signup = () => {
               />
 
             </div>
-
-            {/* Email */}
-
-            <div className="mb-5">
-
-              <label
-                htmlFor="email"
-                className="mb-2 block text-sm font-medium text-slate-300"
-              >
-                Email
-              </label>
-
-              <input
-                type="email"
-                id="email"
-                value={email}
-                onChange={(e) =>
-                  setEmail(e.target.value)
-                }
-                placeholder="Enter your email"
-                required
-                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-              />
-
-            </div>
-
-            {/* Password */}
 
             <div className="mb-6">
 
@@ -188,14 +142,11 @@ const Signup = () => {
                 <button
                   type="button"
                   onClick={() =>
-                    setShowPassword(!showPassword)
+                    setShowPassword(
+                      !showPassword
+                    )
                   }
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 transition hover:text-emerald-400"
-                  aria-label={
-                    showPassword
-                      ? "Hide password"
-                      : "Show password"
-                  }
                 >
 
                   {showPassword ? (
@@ -236,7 +187,6 @@ const Signup = () => {
                         strokeLinejoin="round"
                         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                       />
-
                     </svg>
 
                   )}
@@ -246,8 +196,6 @@ const Signup = () => {
               </div>
 
             </div>
-
-            {/* Create Account Button */}
 
             <button
               type="submit"
@@ -260,8 +208,6 @@ const Signup = () => {
             </button>
 
           </form>
-
-          {/* Login Link */}
 
           <div className="mt-6 border-t border-slate-800 pt-5 text-center">
 
@@ -283,6 +229,7 @@ const Signup = () => {
         </div>
 
       </div>
+
     </div>
   );
 };

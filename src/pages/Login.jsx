@@ -9,73 +9,51 @@ const Login = () => {
 
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
     if (!username.trim() || !password.trim()) {
-      alert("Please enter username/email and password.");
+      alert("Please enter username and password.");
       return;
     }
 
     setLoading(true);
 
-    const users = JSON.parse(
-      localStorage.getItem("users") || "[]"
-    );
-
-    const enteredUsernameOrEmail = username.trim().toLowerCase();
-
-    const foundUser = users.find((user) => {
-      const savedUsername = user.username
-        .trim()
-        .toLowerCase();
-
-      const savedEmail = user.email
-        .trim()
-        .toLowerCase();
-
-      return (
-        (enteredUsernameOrEmail === savedUsername ||
-          enteredUsernameOrEmail === savedEmail) &&
-        password === user.password
-      );
-    });
-
-    setTimeout(() => {
-      if (!foundUser) {
-        const userExists = users.some((user) => {
-          const savedUsername = user.username
-            .trim()
-            .toLowerCase();
-
-          const savedEmail = user.email
-            .trim()
-            .toLowerCase();
-
-          return (
-            enteredUsernameOrEmail === savedUsername ||
-            enteredUsernameOrEmail === savedEmail
-          );
-        });
-
-        if (!userExists) {
-          alert("Incorrect username or email.");
-        } else {
-          alert("Incorrect password.");
+    try {
+      const response = await fetch(
+        "http://localhost:5050/user/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: username.trim(),
+            password,
+          }),
         }
+      );
 
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "Invalid username or password.");
         setLoading(false);
         return;
       }
 
+      localStorage.setItem("token", data.token);
       localStorage.setItem("isLoggedIn", "true");
 
       alert("Login successful!");
 
       navigate("/products");
-
+    } catch (error) {
+      console.error("Login Error:", error);
+      alert("Unable to connect to server.");
+    } finally {
       setLoading(false);
-    }, 500);
+    }
   };
 
   return (
@@ -104,15 +82,13 @@ const Login = () => {
 
           <form onSubmit={handleLogin}>
 
-            {/* Username / Email */}
-
             <div className="mb-5">
 
               <label
                 htmlFor="username"
                 className="mb-2 block text-sm font-medium text-slate-300"
               >
-                Username or Email
+                Username
               </label>
 
               <input
@@ -120,14 +96,12 @@ const Login = () => {
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username or email"
+                placeholder="Enter username"
                 required
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none transition placeholder:text-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               />
 
             </div>
-
-            {/* Password */}
 
             <div className="mb-6">
 
@@ -212,8 +186,6 @@ const Login = () => {
 
             </div>
 
-            {/* Login Button */}
-
             <button
               type="submit"
               disabled={loading}
@@ -223,8 +195,6 @@ const Login = () => {
             </button>
 
           </form>
-
-          {/* Signup Link */}
 
           <div className="mt-6 border-t border-slate-800 pt-5 text-center">
 
